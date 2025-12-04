@@ -1,4 +1,8 @@
 import os
+# 【新增】强制移除系统库路径，防止 cuDNN 冲突
+if 'LD_LIBRARY_PATH' in os.environ:
+    del os.environ['LD_LIBRARY_PATH']
+    
 import gc
 import time
 import random
@@ -16,8 +20,9 @@ from data.load_data import MMDataLoader
 from config.config_regression import ConfigRegression
 from config.config_classification import ConfigClassification
 
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1' # 下面老是报错 shape 不一致
+# 设置 CUDA 设备顺序和阻塞模式（用于调试）
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1' 
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -29,30 +34,39 @@ def setup_seed(seed):
 def run(args):
     if not os.path.exists(args.model_save_dir):
         os.makedirs(args.model_save_dir)
-    args.model_save_path = os.path.join(args.model_save_dir,\
+    args.model_save_path = os.path.join(args.model_save_dir, \
                                         f'{args.modelName}-{args.datasetName}-{args.train_mode}.pth')
     
+    # 自动寻找空闲 GPU 逻辑
     if len(args.gpu_ids) == 0 and torch.cuda.is_available():
-        # load free-most gpu
-        pynvml.nvmlInit()
-        dst_gpu_id, min_mem_used = 0, 1e16
-        for g_id in [0, 1, 2, 3]:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(g_id)
-            meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            mem_used = meminfo.used
-            if mem_used < min_mem_used:
-                min_mem_used = mem_used
-                dst_gpu_id = g_id
-        print(f'Find gpu: {dst_gpu_id}, use memory: {min_mem_used}!')
-        logger.info(f'Find gpu: {dst_gpu_id}, with memory: {min_mem_used} left!')
-        args.gpu_ids.append(dst_gpu_id)
-    # device
+        try:
+            pynvml.nvmlInit()
+            dst_gpu_id, min_mem_used = 0, 1e16
+            # 扫描前4个可能的GPU ID (DSW通常只有1个，即ID 0)
+            for g_id in [0, 1, 2, 3]:
+                try:
+                    handle = pynvml.nvmlDeviceGetHandleByIndex(g_id)
+                    meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                    mem_used = meminfo.used
+                    if mem_used < min_mem_used:
+                        min_mem_used = mem_used
+                        dst_gpu_id = g_id
+                except:
+                    continue # 如果只有1张卡，访问index 1会报错，跳过即可
+            print(f'Find gpu: {dst_gpu_id}, use memory: {min_mem_used}!')
+            logger.info(f'Find gpu: {dst_gpu_id}, with memory: {min_mem_used} left!')
+            args.gpu_ids.append(dst_gpu_id)
+        except Exception as e:
+            print(f"NVML Init failed or no GPU found, defaulting to 0. Error: {e}")
+            args.gpu_ids.append(0)
+
+    # device setup
     using_cuda = len(args.gpu_ids) > 0 and torch.cuda.is_available()
     logger.info("Let's use the GPU %d !" % len(args.gpu_ids))
     device = torch.device('cuda:%d' % int(args.gpu_ids[0]) if using_cuda else 'cpu')
-    # device = "cuda:1" if torch.cuda.is_available() else "cpu"
     args.device = device
-    # data
+    
+    # data loading
     dataloader = MMDataLoader(args)
     model = AMIO(args).to(device)
 
@@ -71,14 +85,10 @@ def run(args):
 
     print_trainable_parameters(model)
 
-    # using multiple gpus
-    # if using_cuda and len(args.gpu_ids) > 1:
-    #     model = torch.nn.DataParallel(model,
-    #                                   device_ids=args.gpu_ids,
-    #                                   output_device=args.gpu_ids[0])
     atio = ATIO().getTrain(args)
     # do train
     atio.do_train(model, dataloader)
+    
     # load pretrained model
     assert os.path.exists(args.model_save_path)
     # load finetune parameters
@@ -100,14 +110,12 @@ def run(args):
     return results
 
 
-
 def run_normal(args):
     args.res_save_dir = os.path.join(args.res_save_dir)
     init_args = args
     model_results = []
     seeds = args.seeds
-    # warm_epochs =[30,40,50,60,70,80,90,100]
-    # for warm_up_epoch in warm_epochs:
+    
     # run results
     for i, seed in enumerate(seeds):
         args = init_args
@@ -120,35 +128,33 @@ def run_normal(args):
 
         setup_seed(seed)
         args.seed = seed
-        # args.warm_up_epochs = warm_up_epoch
+        
         logger.info('Start running %s...' % (args.modelName))
         logger.info(args)
-        # runnning
+        
         args.cur_time = i + 1
-        test_results = run(args)  # 训练
+        test_results = run(args)  # 训练入口
+        
         # restore results
         model_results.append(test_results)
 
         criterions = list(model_results[0].keys())
-        # load other results
+        
         save_path = os.path.join(args.res_save_dir, f'{args.datasetName}-{args.train_mode}-{args.warm_up_epochs}.csv')
         if not os.path.exists(args.res_save_dir):
             os.makedirs(args.res_save_dir)
+            
         if os.path.exists(save_path):
             df = pd.read_csv(save_path)
         else:
-            # df = pd.DataFrame(columns=["Model"] + criterions)
             df = pd.DataFrame(columns=["Model", "Seed"] + criterions)
-        # save results
-        # res = [args.modelName]
-
+        
         for k, test_results in enumerate(model_results):
             res = [args.modelName, f'{seed}']
             for c in criterions:
                 res.append(round(test_results[c] * 100, 2))
             df.loc[len(df)] = res
 
-        # df.loc[len(df)] = res
         df.to_csv(save_path, index=None)
         logger.info('Results are added to %s...' % (save_path))
         df = df.iloc[0:0]  # 保存后清0
@@ -183,36 +189,52 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--is_tune', type=bool, default=False,
                         help='tune parameters ?')
-    parser.add_argument('--train_mode', type=str, default="regression",
+    # 默认模式设为 classification，因为 meld 是分类任务
+    parser.add_argument('--train_mode', type=str, default="classification",
                         help='regression / classification')
     parser.add_argument('--modelName', type=str, default='cmcm',
                         help='support CMCM')
-    parser.add_argument('--datasetName', type=str, default='mosi',
+    # 默认数据集改为 meld
+    parser.add_argument('--datasetName', type=str, default='meld',
                         help='support mosei/simsv2/meld/cherma')
-    parser.add_argument('--root_dataset_dir', type=str, default='/home/young/DL/multimodal_dataset/',
+    
+    # 【重要修改】绝对路径指向 dataset
+    parser.add_argument('--root_dataset_dir', type=str, default='/mnt/workspace/MSE-Adapter/dataset/',
                         help='Location of the root directory where the dataset is stored')
+    
     parser.add_argument('--num_workers', type=int, default=0,
                         help='num workers of loading data')
     parser.add_argument('--model_save_dir', type=str, default='results/models',
                         help='path to save results.')
     parser.add_argument('--res_save_dir', type=str, default='results/results',
                         help='path to save results.')
-    parser.add_argument('--pretrain_LM', type=str, default='/data/huggingface_model/THUDM/chatglm3-6b-base/',
+    
+    # 【重要修改】绝对路径指向 chatglm3-6b
+    parser.add_argument('--pretrain_LM', type=str, default='/mnt/workspace/MSE-Adapter/chatglm3-6b/',
                         help='path to load pretrain LLM.')
+    
     parser.add_argument('--gpu_ids', type=list, default=[],
-                        help='indicates the gpus will be used. If none, the most-free gpu will be used!')   #使用GPU1
+                        help='indicates the gpus will be used. If none, the most-free gpu will be used!') 
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_args()
     logger = set_log(args)
-    for data_name in ['mosei', 'simsv2', 'meld', 'cherma']:
+    
+    # 【重要修改】这里只保留 meld，因为你只有这个数据
+    # 如果以后下载了 mosei，再把 'mosei' 加回这个列表里
+    target_datasets = ['meld'] 
+    
+    for data_name in target_datasets:
         if data_name in ['mosei', 'simsv2']:
             args.train_mode = 'regression'
         else:
             args.train_mode = 'classification'
 
         args.datasetName = data_name
+        
+        # 种子列表，可根据需要保留全部或只留一个
         args.seeds = [1111, 2222, 3333, 4444, 5555]
-        # args.seeds = [1111]
+        # args.seeds = [1111] # 调试时可以只跑一个种子
+        
         run_normal(args)
