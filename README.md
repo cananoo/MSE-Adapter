@@ -31,6 +31,8 @@ cd MSE-Adapter
 conda create --name MSE-Adapter python=3.10.13
 conda activate MSE-Adapter
 pip install -r requirements.txt
+# 假设你上传到了当前目录
+pip install en_core_web_sm-3.7.1-py3-none-any.whl
 ```
 🚨 **Critical Notice (2025/04/29 update)**: It is **highly recommended** to create a new **virtual environment** directly using `requirements.txt`. If that's not feasible, at least ensure that the `transformers` version matches exactly. Otherwise, the training loss may decrease as expected, but the evaluation metrics could be abnormal, severely impacting the model's performance.
 
@@ -45,6 +47,11 @@ pip install -r requirements.txt
 ### 💾 Step 3: Download the Backbone LLM
 - Download backbone LLM from the [THUDM/chatglm3-6b](https://huggingface.co/THUDM/chatglm3-6b) and set `pretrain_LM` in `parse_args` of `run.py` to the path where you store your LLM. If for any particular reason your download is too slow, try using [Modelscope](https://modelscope.cn/my/overview) 🌐 or [HF-mirrors](https://hf-mirror.com/) 🌐.
 
+<p align="center">
+  <img width="374" height="412" alt="image" src="https://github.com/user-attachments/assets/c91885a8-0488-492f-b299-bf8ddf0e31cd" />
+</p>
+
+
 ### ▶️ Step 4: Run!
 - Once you have completed the basic setup as described above, you can run the code using the following steps. The code will run 5 random seeds and the results will be saved in `results/result`. The results presented in the paper are the average of 5 random seeds.
 ```bash
@@ -54,3 +61,4 @@ python run.py
 
 ## 🙏 Acknowledgment
 Our code is structurally referenced to [SELF-MM](https://github.com/thuiar/Self-MM). Thanks to their open-source spirit for saving us a lot of time. 💖
+
