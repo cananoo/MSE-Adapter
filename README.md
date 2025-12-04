@@ -3,19 +3,19 @@
 # 😊 The Official Implementation of MSE-Adapter
 
 <p align="center">
-    <a href="https://arxiv.org/abs/2502.12478"><img src="https://img.shields.io/badge/arXiv-2502.12478-b31b1b?style=for-the-badge" alt="arXiv"></a>
-    <a href="https://ojs.aaai.org/index.php/AAAI/article/view/34755"><img src="https://img.shields.io/badge/AAAI-2025-003973?style=for-the-badge" alt="AAAI 2025"></a>
+    <a href="https://arxiv.org/abs/2502.12478"><img src="https://img.shields.io/badge/arXiv-2502.12478-b31b1b?style=for-the-badge" alt="arXiv"></a>
+    <a href="https://ojs.aaai.org/index.php/AAAI/article/view/34755"><img src="https://img.shields.io/badge/AAAI-2025-003973?style=for-the-badge" alt="AAAI 2025"></a>
 </p>
 
 🎉🎉 **We have been accepted at AAAI-2025!**
 </div>
 
 ---
-This is the official code for the 《MSE-Adapter: A Lightweight Plugin Endowing LLMs with the Capability to Perform Multimodal Sentiment Analysis and Emotion Recognition》. 
+This is the official code for the 《MSE-Adapter: A Lightweight Plugin Endowing LLMs with the Capability to Perform Multimodal Sentiment Analysis and Emotion Recognition》. 
 
 ![Overall](Fig/overall.png)
 <div align="center">
-    
+    
 *Fig1: The comprehensive framework integrating MSE-Adapter with LLM.*
 
 </div>
@@ -38,19 +38,20 @@ pip install en_core_web_sm-3.7.1-py3-none-any.whl
 
 ### 📂 Step 2: Download the Dataset
 - You can download the dataset at the link below：
-   - [MOSEI](https://huggingface.co/datasets/AZYoung/MOSEI_processed)📦
-   - [SIMS-V2](https://huggingface.co/datasets/AZYoung/SIMSV2_processed)📦
-   - [MELD](https://huggingface.co/datasets/AZYoung/MELD_processed)📦
-   - [CHERMA](https://huggingface.co/datasets/AZYoung/CHERMA0723_processed)📦
+   - [MOSEI](https://huggingface.co/datasets/AZYoung/MOSEI_processed)📦
+   - [SIMS-V2](https://huggingface.co/datasets/AZYoung/SIMSV2_processed)📦
+   - [MELD](https://huggingface.co/datasets/AZYoung/MELD_processed)📦
+   - [CHERMA](https://huggingface.co/datasets/AZYoung/CHERMA0723_processed)📦
 - Place them under the same folder, and set `root_dataset_dir` in `parse_args` of `run.py` to the path where you store your dataset.
 
 ### 💾 Step 3: Download the Backbone LLM
 - Download backbone LLM from the [THUDM/chatglm3-6b](https://huggingface.co/THUDM/chatglm3-6b) and set `pretrain_LM` in `parse_args` of `run.py` to the path where you store your LLM. If for any particular reason your download is too slow, try using [Modelscope](https://modelscope.cn/my/overview) 🌐 or [HF-mirrors](https://hf-mirror.com/) 🌐.
 
 <p align="center">
-  <img width="374" height="412" alt="image" src="https://github.com/user-attachments/assets/c91885a8-0488-492f-b299-bf8ddf0e31cd" />
+  <img width="374" height="412" alt="image" src="https://github.com/user-attachments/assets/c91885a8-0488-492f-b299-bf8ddf0e31cd" />
 </p>
 
+> **Reproduction Experimental Environment:** NVIDIA A10 (24GB), Python 3.10.13, PyTorch 2.0.1, Transformers 4.36.1.
 
 ### ▶️ Step 4: Run!
 - Once you have completed the basic setup as described above, you can run the code using the following steps. The code will run 5 random seeds and the results will be saved in `results/result`. The results presented in the paper are the average of 5 random seeds.
@@ -61,4 +62,3 @@ python run.py
 
 ## 🙏 Acknowledgment
 Our code is structurally referenced to [SELF-MM](https://github.com/thuiar/Self-MM). Thanks to their open-source spirit for saving us a lot of time. 💖
-
