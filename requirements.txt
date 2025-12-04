@@ -28,7 +28,7 @@ diffusers==0.31.0
 dill==0.3.7
 easydict==1.13
 einops==0.7.0
-en-core-web-sm==3.7.1
+#en-core-web-sm==3.7.1
 exceptiongroup==1.2.2
 fastapi==0.115.8
 filelock==3.13.1
@@ -60,7 +60,7 @@ multidict==6.0.4
 multiprocess==0.70.15
 murmurhash==1.0.10
 networkx==3.1
-numpy==1.26.2
+numpy
 nvidia-cublas-cu11==11.10.3.66
 nvidia-cuda-cupti-cu11==11.7.101
 nvidia-cuda-nvrtc-cu11==11.7.99
@@ -121,8 +121,8 @@ tiktoken==0.5.2
 tokenizers==0.15.0
 tomli==2.0.1
 torch==2.0.1
-torchaudio==2.1.2
-torchvision==0.16.2
+torchaudio==2.0.2
+torchvision==0.15.2
 torchviz==0.0.2
 tqdm==4.66.1
 transformers==4.36.1
